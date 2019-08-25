@@ -1,0 +1,215 @@
+-- API to help with generic turtle functions. v1.0.0
+
+-- Given an item object, find and select it in the inventory
+function selectItem(item)
+	if turtle.getItemDetail() ~= nil and turtle.getItemDetail().name == item.name and turtle.getItemDetail().damage == item.damage then
+		return
+	end
+	
+	for i=1,16,1 do
+		if turtle.getItemDetail(i) ~= nil and turtle.getItemDetail(i).name == item.name and turtle.getItemDetail(i).damage == item.damage then
+			slot = i
+		end
+	end
+	
+
+	
+	if slot == nil then
+		print("Unable to select "..item.name)
+	else
+		turtle.select(slot)
+	end
+end
+
+-- Get how many of an item the turtle has
+function tally(item)
+	local count = 0
+	for i = 1,16,1 do
+		if turtle.getItemDetail(i) ~= nil
+		and turtle.getItemDetail(i).name == item.name 
+		and turtle.getItemDetail(i).damage == item.damage then
+			count = count + turtle.getItemCount(i)
+		end
+	end
+	return count
+end
+
+-- Drop all of an item <item> [amount to keep in inventory]
+function dropItem(item, keepAmount)
+	if keepAmount == nil then keepAmount = 0 end
+	
+	-- Keep track of selected slot
+	local selectedSlot = turtle.getSelectedSlot()
+	
+	-- Make array of all matching slots
+	local slots = {}
+	for i=1,16,1 do
+		if turtle.getItemDetail(i) ~= nil and turtle.getItemDetail(i).name == item.name and turtle.getItemDetail(i).damage == item.damage then
+			slots[#slots+1] = i
+		end
+	end
+	
+	-- Drop all items
+	for k,v in pairs(slots) do
+		-- Make sure we have keepAmount left
+		if tally(item) <= keepAmount then
+			turtle.select(selectedSlot)
+			return
+		end
+		
+		local currentAmount = tally(item)
+		turtle.select(v)
+		if currentAmount - turtle.getItemCount() < keepAmount then
+			turtle.drop(currentAmount - keepAmount)
+		else
+			turtle.drop()
+		end
+		
+	end
+	
+	turtle.select(selectedSlot)
+end
+
+-- Checks if 2 item objects are the same
+function itemEquals(item1, item2)
+	if item1 == nil or item2 == nil then return false end
+	return item1.name == item2.name and item1.damage == item2.damage
+end
+
+-- Helper function for inventory()
+function findItem(inventory, item)
+	if type(inventory) ~= 'table' then return end
+	if type(inventory[1]) ~= 'table' then return end
+	if type(inventory[1].item) ~= 'table' then return end
+	
+	for k,v in pairs(inventory) do
+		if itemEquals(v.item, item) then
+			return k
+		end
+	end
+end
+
+-- Take inventory of this turtle's inventory. Returns {{item={name=name,damage=damage},count=count}}
+function inventory()
+	local inventory = {}
+	for i = 1,16,1 do
+		local item = turtle.getItemDetail(i)
+		if item ~= nil then
+			-- See if we already have an entry for this item
+			local key = findItem(inventory, item)
+			if key ~= nil then
+				inventory[key].count = inventory[key].count + item.count
+			else
+				inventory[#inventory+1] = {item={name=item.name,damage=item.damage},count=item.count}
+			end
+		end
+	end
+	return inventory
+end
+
+-- Get the item out of the current slot
+function evadeItem()
+	local slot = 16
+	local success = false
+	while not success do
+		if slot < 1 then break end
+		success = turtle.transferTo(slot)
+		if not success then slot = slot - 1 end
+	end
+end
+
+-- Assemble a certian amount of an item in current slot
+function assembleItem(item, amount)
+	local slot = turtle.getSelectedSlot()
+	for i = 1,16,1 do
+		if turtle.getItemCount(slot) >= amount then
+			turtle.select(slot)
+			return
+		end
+		if itemEquals(turtle.getItemDetail(i),item) then
+			turtle.select(i)
+			local requiredAmount = amount - turtle.getItemCount(slot)
+			turtle.transferTo(slot, requiredAmount)
+		end
+	end
+	turtle.select(slot)
+end
+
+-- Helper function for collate()
+function getRange(ranges, item)
+	for k, v in pairs(ranges) do
+		if itemEquals(v.item, item) then return v end
+	end
+end
+
+-- Helper function for collate()
+function addRange(ranges, item, count)
+	if #ranges == 0 then
+		ranges[1] = {item=item, start=1, finish=math.ceil(count/64)}
+	else
+		local start = ranges[#ranges].finish+1
+		ranges[#ranges+1] = {item=item, start=start, finish=start+math.ceil(count/64)}
+	end
+end
+
+-- Collate all turtle's items together
+function collate()
+	local inventory = inventory()
+	local ranges = {}
+	
+	-- Create ranges
+	for k,v in pairs(inventory) do
+		addRange(ranges,v.item,v.count)
+	end
+	
+	for i = 1,16,1 do
+		turtle.select(i)
+		local item = turtle.getItemDetail()
+		if item ~= nil then
+			range = getRange(ranges, item)
+			
+			local success = false
+			local slot = range.start
+			while not success do
+				if slot > 16 then break end
+				if turtle.getItemDetail() == nil then break end
+				sucess = turtle.transferTo(slot)
+				if not success then
+					-- Deal with item occupying slot
+					if not itemEquals(turtle.getItemDetail(slot), item) then
+						turtle.select(slot)
+						evadeItem()
+						turtle.select(i)
+					else
+						slot = slot + 1
+					end
+					-- if slot > range.finish then break end
+				end
+			end
+		end
+	end
+end
+
+-- Timer that makes use of the turtle's inventory to perserve state between reloads
+-- MAY NOT BE USED FOR TIMES UNDER 32 SECONDS
+function itemTimer(slot1,slot2,seconds)
+	turtle.select(slot1)
+	
+	-- The amount of time to wait in between transfers
+	local delaySeconds = seconds / 64
+	while turtle.getItemCount(slot2) < 64 do
+		os.sleep(delaySeconds)
+		turtle.transferTo(slot2,1)
+	end
+end
+
+-- Setup an item timer in the given slots
+function setupItemTimer(slot1,slot2,item)
+	turtle.select(slot2)
+	evadeItem()
+	turtle.select(slot1)
+	if not itemEquals(turtle.getItemDetail(),item) then
+		evadeItem()
+	end
+	assembleItem(item,64)
+end
