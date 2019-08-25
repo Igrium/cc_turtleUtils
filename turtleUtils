@@ -1,4 +1,4 @@
--- API to help with generic turtle functions. v1.0.0
+-- API to help with generic turtle functions. v1.0.1
 
 -- Given an item object, find and select it in the inventory
 function selectItem(item)
@@ -194,6 +194,8 @@ end
 -- MAY NOT BE USED FOR TIMES UNDER 32 SECONDS
 function itemTimer(slot1,slot2,seconds)
 	turtle.select(slot1)
+	
+	if turtle.getItemCount(slot2) == 64 then return end
 	
 	-- The amount of time to wait in between transfers
 	local delaySeconds = seconds / 64
