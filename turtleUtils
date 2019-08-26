@@ -1,4 +1,4 @@
--- API to help with generic turtle functions. v1.0.1
+-- API to help with generic turtle functions. v1.1.0
 
 --- Given an item object, find and select it in the inventory.
 -- @param item (table) Item to find and select
