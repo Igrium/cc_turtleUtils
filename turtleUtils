@@ -229,3 +229,14 @@ function setupItemTimer(slot1,slot2,item)
 	end
 	assembleItem(item,64)
 end
+
+--- Search for all refuelable items and refuel.
+-- @return (boolean) Success
+function attemptRefuel()
+	for i = 1,16,1 do
+		turtle.select(i)
+		turtle.refuel()
+	end
+	
+	return turtle.getFuelLevel() >= requiredFuel
+end
