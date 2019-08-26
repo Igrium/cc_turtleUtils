@@ -73,6 +73,82 @@ function dropItem(item, keepAmount)
 	turtle.select(selectedSlot)
 end
 
+--- Drop all of an item upwards.
+-- @param item (table) Item to drop.
+-- @param keepAmount (table) Amount of this item to keep in inventory (not drop).
+function dropItemUp(item, keepAmount)
+	if keepAmount == nil then keepAmount = 0 end
+	
+	-- Keep track of selected slot
+	local selectedSlot = turtle.getSelectedSlot()
+	
+	-- Make array of all matching slots
+	local slots = {}
+	for i=1,16,1 do
+		if turtle.getItemDetail(i) ~= nil and turtle.getItemDetail(i).name == item.name and turtle.getItemDetail(i).damage == item.damage then
+			slots[#slots+1] = i
+		end
+	end
+	
+	-- Drop all items
+	for k,v in pairs(slots) do
+		-- Make sure we have keepAmount left
+		if tally(item) <= keepAmount then
+			turtle.select(selectedSlot)
+			return
+		end
+		
+		local currentAmount = tally(item)
+		turtle.select(v)
+		if currentAmount - turtle.getItemCount() < keepAmount then
+			turtle.dropUp(currentAmount - keepAmount)
+		else
+			turtle.dropUp()
+		end
+		
+	end
+	
+	turtle.select(selectedSlot)
+end
+
+--- Drop all of an item downwards.
+-- @param item (table) Item to drop.
+-- @param keepAmount (table) Amount of this item to keep in inventory (not drop).
+function dropItemDown(item, keepAmount)
+	if keepAmount == nil then keepAmount = 0 end
+	
+	-- Keep track of selected slot
+	local selectedSlot = turtle.getSelectedSlot()
+	
+	-- Make array of all matching slots
+	local slots = {}
+	for i=1,16,1 do
+		if turtle.getItemDetail(i) ~= nil and turtle.getItemDetail(i).name == item.name and turtle.getItemDetail(i).damage == item.damage then
+			slots[#slots+1] = i
+		end
+	end
+	
+	-- Drop all items
+	for k,v in pairs(slots) do
+		-- Make sure we have keepAmount left
+		if tally(item) <= keepAmount then
+			turtle.select(selectedSlot)
+			return
+		end
+		
+		local currentAmount = tally(item)
+		turtle.select(v)
+		if currentAmount - turtle.getItemCount() < keepAmount then
+			turtle.dropDown(currentAmount - keepAmount)
+		else
+			turtle.dropDown()
+		end
+		
+	end
+	
+	turtle.select(selectedSlot)
+end
+
 --- Check if 2 item objects are the same
 -- @param item1 (table) Item to compare
 -- @param item2 (table) Item to compare
